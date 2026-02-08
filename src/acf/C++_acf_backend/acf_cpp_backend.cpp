@@ -28,13 +28,13 @@ std::vector<double> corr_128(const std::vector<double>& vec, const double ave, c
     std::vector<double> denominator(vec.size() + 100);
     for (int i = 0; i < vec.size(); i+=2)
     {
-        __m256d vec1 = _mm256_loadu_pd(vec.data() + i);
-        __m256d av = _mm256_set1_pd(ave);
+        __m128d vec1 = _mm_loadu_pd(vec.data() + i);
+        __m128d av = _mm_set1_pd(ave);
 
-        __m256d subtraction = _mm256_sub_pd(vec1, av);
-        __m256d res = _mm256_mul_pd(subtraction, subtraction);
+        __m128d subtraction = _mm_sub_pd(vec1, av);
+        __m128d res = _mm_mul_pd(subtraction, subtraction);
 
-        _mm256_storeu_pd(denominator.data() + i, res);
+        _mm_storeu_pd(denominator.data() + i, res);
     }
 
     denominator = vector_slice(denominator, 0, vec.size());
@@ -50,11 +50,11 @@ std::vector<double> corr_128(const std::vector<double>& vec, const double ave, c
     for (int i = 0; i < vec.size(); i += 2)
     {
 
-        __m256d vec1 = _mm256_loadu_pd(vec.data() + i);
-        __m256d av = _mm256_set1_pd(ave);
-        __m256d res = _mm256_sub_pd(vec1, av);
+        __m128d vec1 = _mm_loadu_pd(vec.data() + i);
+        __m128d av = _mm_set1_pd(ave);
+        __m128d res = _mm_sub_pd(vec1, av);
 
-        _mm256_storeu_pd(results.data() + i, res);
+        _mm_storeu_pd(results.data() + i, res);
     }
     results = vector_slice(results, 0, vec.size());
 
@@ -71,11 +71,11 @@ std::vector<double> corr_128(const std::vector<double>& vec, const double ave, c
 
         for (int i = 0; i < a.size(); i += 2)
         {
-            __m256d vec1 = _mm256_loadu_pd(a.data() + i);
-            __m256d vec2 = _mm256_loadu_pd(b.data() + i);
-            __m256d mul = _mm256_mul_pd(vec1, vec2);
+            __m128d vec1 = _mm_loadu_pd(a.data() + i);
+            __m128d vec2 = _mm_loadu_pd(b.data() + i);
+            __m128d mul = _mm_mul_pd(vec1, vec2);
 
-            _mm256_storeu_pd(numerator.data() + i, mul);
+            _mm_storeu_pd(numerator.data() + i, mul);
         }
         
         numerator = vector_slice(numerator, 0, results.size() - j);

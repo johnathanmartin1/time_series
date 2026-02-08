@@ -12,6 +12,7 @@ from src.acf.acf_function import acf
 import numpy as np
 import matplotlib.pyplot as plt
 from src.tools.confidence_interval import confidence_interval_plot
+from src.pacf.pacf_cpp_backend import pcorr_128
 
 """_________________________________________________________________________"""
 
@@ -35,6 +36,22 @@ def pacf_py(sample: [list, np.array] , lags: int = 20, return_pacf: bool = False
     if return_pacf == True:
         return pacf
 
+
+def pacf(sample: [list, np.array] , lags: int = 20, return_pacf: bool = False,
+            plot_pacf: bool = True, confidence_bounds: float = 0.95) -> [None, list, np.array]:
+    lags += 1
+    auto_corr = acf(sample, lags, return_acf=True, plot_acf=False)
+        
+    pacf = pcorr_128(auto_corr, lags)
+    
+        
+    if plot_pacf == True:
+        pacf_plotting(pacf, sample, lags, confidence_bounds) 
+        
+        
+    if return_pacf == True:
+        return pacf
+        
 """_________________________________________________________________________"""
 
 """_________________________PACF PLOTTING FUNCTION__________________________"""

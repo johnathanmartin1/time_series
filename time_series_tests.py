@@ -5,8 +5,8 @@ Created on Tue Feb  3 17:28:07 2026
 @author: John Martin
 """
 """select tests to be run with Triue and False switches"""
-console_output = False
-acf_functions_test_switch = True
+console_output = True
+acf_functions_test_switch = False
 pacf_functions_test_switch = True
 
 
@@ -84,7 +84,7 @@ if acf_functions_test_switch == True:
 
 if pacf_functions_test_switch == True:
     
-    from time_series import pacf_py 
+    from time_series import pacf_py, pacf
     
     def pacf_functions_test() -> None:
         model = AR_constructor()
@@ -100,6 +100,21 @@ if pacf_functions_test_switch == True:
                   len(pacf_py(model, 50,plot_pacf=False, return_pacf=True)), "\n")
             
             print("pacf results =",pacf_py(model,50,return_pacf=True, plot_pacf=False))
+            
+            print("\n\n\n")
+            
+        
+        """testing the python pacf function"""
+        
+        #sm.graphics.tsa.plot_pacf(model,lags=50)
+        pacf(model, 50, plot_pacf=True, confidence_bounds=0.95)
+        plt.show()
+        print("what???")
+        if console_output == True:
+            # print("pacf results length (should be 1 more than requested lags) =",
+            #       len(pacf(model, 50,plot_pacf=False, return_pacf=False)), "\n")
+            
+            print("pacf results =",pacf(model,50,return_pacf=True, plot_pacf=False))
             
             print("\n\n\n")
     

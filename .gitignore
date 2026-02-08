@@ -4,3 +4,4 @@ src/acf/C++_acf_backend_development/
 src/acf/__pycache__/
 src/pacf/__pycache__/
 src/tools/__pycache__/
+src/pacf/C++_pacf_backend/build/
