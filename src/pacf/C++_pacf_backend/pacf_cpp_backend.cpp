@@ -29,15 +29,16 @@ std::vector<double> vector_slice(const std::vector<double>& vec, int begin, int 
 std::vector<double> pcorr_128(const std::vector<double>& acf, const int lags)
 {
     std::vector<double> pcorr(acf.size());
+
     pcorr[0] = 1;
     pcorr[1] = acf[1];
     for (int lag = 2; lag < lags; lag++)
     {
-        std::vector<double> acf_resize(acf.begin()+1, acf.begin()+lag);
-        std::vector<double> pcorr_resize(pcorr.begin()+1, pcorr.begin()+lag);
-        std::vector<double> acf_rev(acf.begin()+1, acf.begin()+lag);
+        std::vector<double> acf_resize(acf.begin(), acf.begin()+lag+1);
+        std::vector<double> pcorr_resize(pcorr.begin(), pcorr.begin()+lag+1);
+        std::vector<double> acf_rev(acf.begin(), acf.begin()+lag+1);
         std::reverse(acf_rev.begin(), acf_rev.end());
-        //acf_rev = vector_slice(acf_rev, 1, i+1);
+        
         
         std::vector<double> mul_result(acf.size()+100);
 
@@ -46,10 +47,11 @@ std::vector<double> pcorr_128(const std::vector<double>& acf, const int lags)
             __m128d pacf = _mm_loadu_pd(pcorr_resize.data() + i);
             __m128d acf1 = _mm_loadu_pd(acf_resize.data() + i);
             __m128d mul = _mm_mul_pd(pacf, acf1);
-            _mm_store_pd(mul_result.data() + i, mul);
+            _mm_storeu_pd(mul_result.data() + i, mul);
         }
-        mul_result = vector_slice(mul_result, 1, lag+1);
+        mul_result = vector_slice(mul_result, 1, lag);
         double pacfn_denominator =  1 - std::accumulate(mul_result.begin(), mul_result.end(), 0.0);
+        
 
         std::vector<double> rev_mul_result(acf.size()+100);
        
@@ -60,12 +62,14 @@ std::vector<double> pcorr_128(const std::vector<double>& acf, const int lags)
             __m128d mul = _mm_mul_pd(pacf, rev_acf);
             _mm_storeu_pd(rev_mul_result.data() + i, mul);
         }
-        rev_mul_result = vector_slice(rev_mul_result, 0, lag+1);
+        rev_mul_result = vector_slice(rev_mul_result, 1, lag);
         double pacfn_numerator = acf[lag] - std::accumulate(rev_mul_result.begin(), rev_mul_result.end(), 0.0);
         pcorr[lag] = pacfn_numerator / pacfn_denominator;
+       
         
     }
     pcorr = vector_slice(pcorr, 0, 51);
+    
     return pcorr;
 }
 

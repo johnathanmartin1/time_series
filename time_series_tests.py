@@ -56,10 +56,10 @@ if acf_functions_test_switch == True:
         plt.show()
         
         if console_output == True:
-            print("acf_py result length (should be 1 more than requested lags) =",
+            print("acf_py function result length (should be 1 more than requested lags) =",
                   len(acf_py(model,50,return_acf=True, plot_acf=False)),"\n")
             
-            print("acf_py results =",acf_py(model,50,return_acf=True, plot_acf=False))
+            print("acf_py function results =",acf_py(model,50,return_acf=True, plot_acf=False))
             
             print("\n\n\n")
         
@@ -69,10 +69,10 @@ if acf_functions_test_switch == True:
         plt.show()
         
         if console_output == True:
-            print("acf result length (should be 1 more than requested lags) =",
+            print("acf function result length (should be 1 more than requested lags) =",
                   len(acf(model,50,return_acf=True, plot_acf=False)), "\n")
             
-            print("acf results =",acf(model,50,return_acf=True, plot_acf=False))
+            print("acf function results =",acf(model,50,return_acf=True, plot_acf=False))
             
             print("\n\n\n")
     
@@ -96,10 +96,10 @@ if pacf_functions_test_switch == True:
         plt.show()
         
         if console_output == True:
-            print("pacf results length (should be 1 more than requested lags) =",
+            print("pacf_py function results length (should be 1 more than requested lags) =",
                   len(pacf_py(model, 50,plot_pacf=False, return_pacf=True)), "\n")
             
-            print("pacf results =",pacf_py(model,50,return_pacf=True, plot_pacf=False))
+            print("pacf function results =",pacf_py(model,50,return_pacf=True, plot_pacf=False))
             
             print("\n\n\n")
             
@@ -109,12 +109,12 @@ if pacf_functions_test_switch == True:
         #sm.graphics.tsa.plot_pacf(model,lags=50)
         pacf(model, 50, plot_pacf=True, confidence_bounds=0.95)
         plt.show()
-        print("what???")
+        
         if console_output == True:
-            # print("pacf results length (should be 1 more than requested lags) =",
-            #       len(pacf(model, 50,plot_pacf=False, return_pacf=False)), "\n")
+            print("pacf function results length (should be 1 more than requested lags) =",
+                  len(pacf(model, 50,plot_pacf=False, return_pacf=True)), "\n")
             
-            print("pacf results =",pacf(model,50,return_pacf=True, plot_pacf=False))
+            print("pacf function results =",pacf(model,50,return_pacf=True, plot_pacf=False))
             
             print("\n\n\n")
     
