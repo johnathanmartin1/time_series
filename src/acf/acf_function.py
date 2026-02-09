@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.acf.acf_cpp_backend import acf_cpp_backend_calc
 from src.tools.confidence_interval import confidence_interval_plot
+from typing import Literal
 
 """_________________________________________________________________________"""
 
@@ -63,16 +64,16 @@ def acf_py(sample, lags: int = 50, return_acf: bool = False,
     
 """_____________________ACF WITH C++ BACKEND FUNCTION_______________________"""
 
-def acf(sample, lags: int =50, return_acf: bool = False,
-        plot_acf: bool = True, 
-        confidence_bounds: float = 0.95) -> [list, np.array, tuple]:
+def acf(sample, lags: int = 50, avx: [Literal["avx", "avx2", "auto"], None] = "auto",
+        return_acf: bool = False, plot_acf: bool = True, confidence_bounds: float = 0.95, 
+        ) -> [list, np.array, tuple]:
     lags = lags + 1
     
     if lags - 2 >= len(sample):
         print ("Number of lags exceeds data length")
         return
 
-    acf = acf_cpp_backend_calc(sample, lags)
+    acf = acf_cpp_backend_calc(sample, lags, str(avx))
 
     if plot_acf == True:
         acf_plotting(acf, sample, lags, confidence_bounds)

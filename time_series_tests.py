@@ -65,7 +65,7 @@ if acf_functions_test_switch == True:
         
         """testing the cpp backend acf function"""
         #sm.graphics.tsa.plot_acf(model,lags=50, fft=False)
-        acf(model, 50, return_acf=False)
+        acf(model, 50, return_acf=False, avx = "auto") #avx has options "avx", "avx2", "auto" and None
         plt.show()
         
         if console_output == True:
@@ -107,7 +107,7 @@ if pacf_functions_test_switch == True:
         """testing the python pacf function"""
         
         #sm.graphics.tsa.plot_pacf(model,lags=50)
-        pacf(model, 50, plot_pacf=True, confidence_bounds=0.95)
+        pacf(model, 50, plot_pacf=True, confidence_bounds=0.95,)
         plt.show()
         
         if console_output == True:

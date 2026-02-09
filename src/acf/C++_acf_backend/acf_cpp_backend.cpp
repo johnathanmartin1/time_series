@@ -7,6 +7,7 @@
 #include <bitset>
 #include <immintrin.h> // For AVX intrinsics (optional)
 #include "avx_check.h"
+#include <string>
 
 namespace py = pybind11;
 
@@ -152,21 +153,47 @@ std::vector<double> corr_256(const std::vector<double>& vec, const double ave, c
 }
 
 
-std::vector<double> acf_cpp_backend_calc(const std::vector<double>& lst, int lags) 
+std::vector<double> acf_cpp_backend_calc(const std::vector<double>& lst, int lags, std::string avx) 
 {
     double average{};
     average = std::accumulate(lst.begin(), lst.end(), 0.0) / lst.size();
-    std::vector<double> correlation(lags);
+    
     int avx_type = avx_support();
-    if (avx_type == 2 || avx_type == 1)
+    if (avx == "auto")
     {
-        correlation = corr_256(lst, average, lags);
+        if (avx_type == 2 || avx_type == 1)// && avx == "auto") || avx == "avx2")
+        {
+            return corr_256(lst, average, lags);
+        }
+        else if (avx_type == 0)// && avx == "auto") || avx == "avx")
+        {
+            return corr_128(lst, average, lags);
+        }
+        else
+        {
+            py::print("Device unable to run AVX or AVX2 SIMD instruction sets. Please use the alternative acf_py function to calculate the auto correlation.");
+            std::vector<double> vec(lags, 0);
+            return vec;
+        }
     }
     else
     {
-        correlation = corr_128(lst, average, lags);
+        if (avx == "avx2")
+        {
+            return corr_256(lst, average, lags);
+        }
+        if (avx == "avx")
+        {
+            return corr_128(lst, average, lags);
+        }
+        else
+        {
+            py::print("Please select avx, avx2 or auto for the acf function or use the alternative acf_py function to calculate the auto correlation.");
+            std::vector<double> vec(lags, 0);
+            return vec;
+        }
+        
     }
-    return correlation;
 }
 
 

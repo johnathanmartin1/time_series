@@ -8,11 +8,12 @@ Created on Mon Feb  2 17:59:30 2026
 """_________________________________________________________________________"""
 
 """_____________________IMPORTING THE REQUIRED PACKAGES_____________________"""
-from src.acf.acf_function import acf
+from src.acf.acf_function import acf, acf_py
 import numpy as np
 import matplotlib.pyplot as plt
 from src.tools.confidence_interval import confidence_interval_plot
-from src.pacf.pacf_cpp_backend import pcorr_128
+from src.pacf.pacf_cpp_backend import pacf_cpp_backend_calc
+from typing import Literal
 
 """_________________________________________________________________________"""
 
@@ -24,7 +25,7 @@ def pacf_py(sample: [list, np.array] , lags: int = 20, return_pacf: bool = False
             plot_pacf: bool = True, confidence_bounds: float = 0.95) -> [None, list, np.array]:
     lags += 1
     pacf: list = [1]
-    auto_corr = np.array(acf(sample, lags, return_acf=True, plot_acf=False))
+    auto_corr = np.array(acf_py(sample, lags, return_acf=True, plot_acf=False))
     for lag in range(1, lags):
         pacfn_numerator = auto_corr[lag] - np.sum([pacf[k]*auto_corr[lag-k] for k in range(1,lag)])
         pacfn_denominator = 1 - np.sum([pacf[k]*auto_corr[k] for k in range(1,lag)])
@@ -37,12 +38,13 @@ def pacf_py(sample: [list, np.array] , lags: int = 20, return_pacf: bool = False
         return pacf
 
 
-def pacf(sample: [list, np.array] , lags: int = 20, return_pacf: bool = False,
-            plot_pacf: bool = True, confidence_bounds: float = 0.95) -> [None, list, np.array]:
+def pacf(sample: [list, np.array] , lags: int = 20, avx: [Literal["avx", "avx2", "auto"], None] = "auto",
+         return_pacf: bool = False, plot_pacf: bool = True, confidence_bounds: float = 0.95,
+         ) -> [None, list, np.array]:
     lags += 1
-    auto_corr = acf(sample, lags, return_acf=True, plot_acf=False)
+    auto_corr = acf(sample, lags, return_acf=True, plot_acf=False, avx = avx)
         
-    pacf = pcorr_128(auto_corr, lags)
+    pacf = pacf_cpp_backend_calc(auto_corr, lags, str(avx))
     
         
     if plot_pacf == True:
