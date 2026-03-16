@@ -5,9 +5,10 @@ Created on Tue Feb  3 17:28:07 2026
 @author: John Martin
 """
 """select tests to be run with Triue and False switches"""
-console_output = True
+console_output = True 
 acf_functions_test_switch = False
-pacf_functions_test_switch = True
+pacf_functions_test_switch = False
+MA_model_test_switch = True
 
 
 """_________________________________________________________________________"""
@@ -23,11 +24,11 @@ import matplotlib.pyplot as plt
 """_______________TOY MODELS FOR TESTING FUNCTION OUTPUTS___________________"""
 
 def MA_builder(x:float) -> float:
-    return 2 + 1 * np.random.normal(2,0.1) #- 1.2 * np.random.normal(0.5,1.4)
+    return 2 + 1 * np.random.normal(0,0.1) #- 1.2 * np.random.normal(0.5,1.4)
 
-def MA_constructor() -> np.array:
+def MA_constructor(size=100) -> np.array:
     MAmodel = []
-    for i in range(100):
+    for i in range(size):
         MAmodel.append(MA_builder(MAmodel))
     return np.array(MAmodel)
 
@@ -93,9 +94,11 @@ if pacf_functions_test_switch == True:
         
         #sm.graphics.tsa.plot_pacf(model,lags=50)
         pacf_py(model, 50, plot_pacf=True, confidence_bounds=0.95)
+        
         plt.show()
         
         if console_output == True:
+         
             print("pacf_py function results length (should be 1 more than requested lags) =",
                   len(pacf_py(model, 50,plot_pacf=False, return_pacf=True)), "\n")
             
@@ -107,10 +110,13 @@ if pacf_functions_test_switch == True:
         """testing the python pacf function"""
         
         #sm.graphics.tsa.plot_pacf(model,lags=50)
+        
         pacf(model, 50, plot_pacf=True, confidence_bounds=0.95,)
+        
         plt.show()
         
         if console_output == True:
+        
             print("pacf function results length (should be 1 more than requested lags) =",
                   len(pacf(model, 50,plot_pacf=False, return_pacf=True)), "\n")
             
@@ -122,3 +128,29 @@ if pacf_functions_test_switch == True:
     pacf_functions_test()
 
 """_________________________________________________________________________"""
+
+"""_________________Moving Average Model Test_______________________________"""
+
+if MA_model_test_switch == True:
+
+    from time_series import MA_model
+    def MA_model_test():
+        data = MA_constructor()
+    
+        mamodel = MA_model(data)
+    
+        mamodel.fit(3)
+    
+        mamodel.model_function()
+        
+        if console_output == True:
+            
+            print("Moving Average model =",mamodel.model)
+    
+        mamodel.forecast()
+        
+    MA_model_test()
+
+
+
+

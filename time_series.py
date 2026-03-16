@@ -20,6 +20,10 @@ from src.pacf.pacf_function import pacf_py, pacf
 
 '''-------------------------------------------------------------------------'''
 
+'''Importing the moving average model class MA_model 
+(path = src.models.moving_average_model.MA_class'''
+from src.models.moving_average_model.MA_class import MA_model
+
 
         
     
