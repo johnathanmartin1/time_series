@@ -18,87 +18,54 @@ import matplotlib.pyplot as plt
 #from src.tools.confidence_interval import confidence_interval_plot
 #from typing import Literal
 
-def MA_builder(x:float) -> float:
-    return 2 + 1 * np.random.normal(0,0.1) #- 1.2 * np.random.normal(0.5,1.4)
 
-def MA_constructor() -> np.array:
-    MAmodel = []
-    for i in range(100):
-        MAmodel.append(MA_builder(MAmodel))
-    return np.array(MAmodel)
+
+def MA_constructor(length: int = 100, theta: list = [0.2], stdev: float = 1, mean: float = 10.0) -> np.array:
+    
+    error = [np.random.normal(0,stdev) for _ in theta]
+    
+    MAmodel = np.array([0.0]*length)
+    
+    for i in range(length):
+    
+        ma_construct = 0
+        
+        for j in range(len(theta)):
+        
+            if i-j >=0:
+            
+                ma_construct += theta[j] * error[j]
+        
+        MAmodel[i] = mean + np.random.normal(0,stdev) + ma_construct
+        
+    return MAmodel
 
 
 
 class MA_model():
     
-    def __init__(self, series_data: [list, np.array], theta_q: [list, np.array] = None, mean: float = None, stdev: float = None):
+    def __init__(self, sample_data: [list, np.array], theta: [list, np.array] = None, mean: float = None, stdev: float = None):
         
-        self.theta_q = np.array(theta_q)
+        self.sample_data = np.array(sample_data)
         
-        self.mean = mean
+        self.mean = np.mean(self.sample_data)
         
-        self.stdev = stdev 
+        self.stdev = np.std(self.sample_data)
         
-        self.series_data = series_data
+        self.theta = np.array(theta)
+        
+        self.lags = None
         
         self.model = None
-
-
-
-    def likelihood_py(self, theta: [list, np.array], y: [list, np.array]) -> float :
-        
-        y = np.array(y)
-        
-        y_minus_mean_y = y - np.mean(y)
-        
-        sigma = np.std(y_minus_mean_y)
-        
-        x = np.array(np.random.normal(0,sigma, size=y.size))
-        
-        theta_hat = np.array(theta)
-        
-        y_minus_theta_x = y_minus_mean_y
-        
-        for i in theta_hat:
-            
-            y_minus_theta_x -= i*x
-        
-        gaussian_probability = (1/np.sqrt(2 * np.pi * sigma**2)) * np.exp(-(y_minus_theta_x)**2 / (2 * sigma**2))
-        
-        return np.sum(np.log(gaussian_probability))
-
-
-    
-    def fit(self, q: int, min_theta_q: float = -1,
-               max_theta_q: float = 1, step_theta_q: float =0.01):
-        
-        prob_dict = {}
-        
-        q_range = np.arange(min_theta_q, max_theta_q+step_theta_q , step_theta_q)
-        
-        q_values = np.tile(q_range, (q,1))
-        
-        for combination in product(*q_values):
-        
-            prob_dict[combination] = self.likelihood_py(combination, self.series_data)
-            
-        max_key = max(prob_dict, key=prob_dict.get)
-        
-        self.theta_q = np.array(max_key)
-        
-        self.mean = np.mean(self.series_data)
-        
-        self.stdev = np.std(self.series_data)
-
-        
+   
     
     def model_function(self, decimal_places: int = 4):
         
-        if self.mean != None and self.theta_q.all() != None and self.stdev != None:
+        if self.mean != None and self.theta.all() != None and self.stdev != None:
         
             numerical_model_temp = f"{self.mean:.{decimal_places}f} + \u03B5_t"
     
-            for lag, coefficient in enumerate(self.theta_q):
+            for lag, coefficient in enumerate(self.theta):
             
                 lag += 1 
                 
@@ -114,7 +81,6 @@ class MA_model():
             
             self.model = numerical_model_temp
             
-            return self.model
         
         else:
         
@@ -122,41 +88,110 @@ class MA_model():
 
 
     
-    def numerical_model(self, future_lags:int = 10) -> np.array:
+    '''function that calculates the residuals between the sample data and the predicted data'''
+    def residuals(self, q: int) -> np.array:
         
-        model_time_series = []
+        errors = [0.0]*len(self.sample_data)
         
-        for lag in range(0, future_lags):
+        for sample_index in range(len(self.sample_data)):
         
-            current_lag_data = 0
+            ma_error = 0
             
-            for coefficient in self.theta_q:
+            for theta_index in range(1,q+1):
                 
-                current_lag_data+= coefficient*np.random.normal(0, self.stdev)
+                if sample_index-theta_index >= 0:
                 
-            model_time_series.append(current_lag_data + self.mean + np.random.normal(0,self.stdev))
+                    ma_error += self.theta[theta_index - 1] * errors[sample_index - theta_index] 
+                
+                errors[sample_index] = self.sample_data[sample_index] - self.mean - ma_error
         
-        return np.array(model_time_series)
+        return np.array(errors)
 
+    
 
+    def loss_function(self, errors: np.array) -> float:
         
-    def forecast(self, forecast_lags: int = 50):
+        return np.sum(errors**2)
+     
+       
+  
+    def gradient(self, h:float) -> np.array:
         
-        lags = [i for i in range(0, len(self.series_data))]
+        gradients = [0.0]*len(self.theta)
         
-        future_lag = [i for i in range(len(self.series_data), len(self.series_data) + forecast_lags)]
+        base_error = self.residuals(len(self.theta))
         
-        forecast_data = self.numerical_model(forecast_lags)
+        base_loss = self.loss_function(base_error)
         
-        plt.plot(lags, self.series_data, label = "Sample")
+        for theta_index in range(len(self.theta)):
+            self.theta[theta_index] += h
+            
+            error_step = self.residuals(len(self.theta))
+            
+            loss_step = self.loss_function(error_step)
+            
+            gradients[theta_index] = (loss_step - base_loss) / h
         
-        plt.plot(future_lag, forecast_data, label = "Forecast")
+        return np.array(gradients)
         
-        plt.legend()
         
-        plt.xlabel("lags")
         
-        plt.show()
+        
+        
+    
+    '''fittinmg the theta weightings with gradient descent'''
+    def fit(self, q: int, lr = 0.00001, epochs = 10000, h=1e-6):
+        
+        self.theta = np.array([0.0] * q)
+        
+        for epoch in range(epochs):
+            
+            error = self.residuals(q)
+            
+            loss = self.loss_function(error)
+            
+            gradients = self.gradient(h)
+            
+            for theta_index in range(q):
+                self.theta[theta_index] -= lr * gradients[theta_index]
+                
+            if epoch % 50 == 0:
+                print(f"Epoch: {epoch}, loss: {loss:.4f}")
+                
+        
+            
+            
+            
+            
+        
+        
+        
+        
+                    
+        
+        
+        
+        
+    
+    
+        
+    # def forecast(self, forecast_lags: int = 50):
+        
+    #     lags = [i for i in range(0, len(self.series_data))]
+        
+    #     future_lag = [i for i in range(len(self.series_data), len(self.series_data) + forecast_lags)]
+        
+    #     forecast_data = self.numerical_model(forecast_lags)
+        
+    #     plt.plot(lags, self.series_data, label = "Sample")
+        
+    #     plt.plot(future_lag, forecast_data, label = "Forecast")
+        
+    #     plt.legend()
+        
+    #     plt.xlabel("lags")
+        
+    #     plt.show()
         
             
 
@@ -166,14 +201,16 @@ if __name__ == "__main__":
     data = MA_constructor()
     #model1 = ([0.9,0.5,0.6], 4, 0.1)
     mamodel = MA_model(data) 
-      
+    
     mamodel.fit(1)
-    
+    print(mamodel.theta)
     mamodel.model_function()
-    
     print(mamodel.model)
+    print(np.sum(mamodel.theta))
     
-    mamodel.forecast(100)
+    
+
+
     
 
     
