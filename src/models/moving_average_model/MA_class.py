@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from src.acf.acf_cpp_backend import acf_cpp_backend_calc
 #from src.tools.confidence_interval import confidence_interval_plot
-#from typing import Literal
+
 
 
 
@@ -30,22 +30,19 @@ def MA_constructor(length: int = 100, *, q: int = 1, theta: list = None, stdev: 
             
             theta = [np.random.uniform(-1,1) for _ in range(q)]
         print(theta)
-        error = [np.random.normal(0,stdev) for _ in theta]
         
         MAmodel = np.array([0.0]*length)
         
         for i in range(length):
+            
+            ma_noise = 0
+            
+            for thet in theta:
+            
+                ma_noise += thet*np.random.normal(0,stdev)  
+            
+            MAmodel[i] = mean + ma_noise
         
-            ma_construct = 0
-            
-            for j in range(len(theta)):
-            
-                if i-j >=0:
-                
-                    ma_construct += theta[j] * error[j]
-            
-            MAmodel[i] = mean + np.random.normal(0,stdev) + ma_construct
-            
         return MAmodel
 
 
@@ -56,17 +53,17 @@ class MA_model():
         
         self.sample_data = np.array(sample_data)
         
-        self.mean = np.mean(self.sample_data)
+        self.mean = np.mean(self.sample_data) if mean == None else mean
         
-        self.stdev = np.std(self.sample_data)
+        self.stdev = np.std(self.sample_data) if stdev == None else stdev
         
         self.theta = np.array(theta)
-        
-        self.lags = None
         
         self.model = None
         
         self.error = None
+   
+    
    
     '''builds a model for printing'''
     def model_function(self, decimal_places: int = 4):
@@ -91,7 +88,6 @@ class MA_model():
             
             self.model = numerical_model_temp
             
-        
         else:
         
             print("MA model not yet fitted, use .fit(q) to fit model first and then call .model_function().")
@@ -149,16 +145,16 @@ class MA_model():
         
         
     
-    '''fittinmg the theta weightings with gradient descent'''
-    def fit(self, q: int, lr = 0.00001, epochs = 10000, h=1e-6):
+    '''fitting the theta weightings with gradient descent and assigning the last q errors for forecasting'''
+    def fit(self, q: int, *, lr = 0.0001, epochs = 2000, h=1e-6):
         
-        self.theta = np.array([0.0] * q)
+        self.theta = np.array([0.5] * q)
         
         for epoch in range(epochs):
             
-            error = self.residuals(q)
+            self.error = self.residuals(q)
             
-            loss = self.loss_function(error)
+            loss = self.loss_function(self.error)
             
             gradients = self.gradient(h)
             
@@ -168,7 +164,7 @@ class MA_model():
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.4f}")
         
-        self.error = error[-q:]
+        
         self.model_function()
                 
         
@@ -176,56 +172,55 @@ class MA_model():
             
             
             
+    '''Plotting a forecast of the model'''   
+    def forecast(self, steps=10):
         
+        lags  = [i for i in range(0, len(self.sample_data))]
         
+        future_steps = [ i for i in range(len(self.sample_data), len(self.sample_data) + steps)]
         
+        forecast_data = []
+        
+        for i in reversed(range(-1*steps+len(self.theta)+1,len(self.theta)+1)):
+            
+            if i<=0:
+            
+                forecast_data.append(self.mean)
+        
+            else:
+        
+                forecast_data.append(self.mean + np.sum(self.theta[-i:] * self.error[-i:]))
+        
+        plt.plot(lags, self.sample_data, label="Sample Data", color="blue")
+        
+        plt.plot(future_steps, forecast_data, label = "Forecast", color="green")
+        
+        plt.legend()
+        
+        plt.xlabel("Lag")
+        
+        plt.show()
+        
+            
         
                     
-        
-        
-        
-        
-    
-    
-        
-    # def forecast(self, forecast_lags: int = 50):
-        
-    #     lags = [i for i in range(0, len(self.series_data))]
-        
-    #     future_lag = [i for i in range(len(self.series_data), len(self.series_data) + forecast_lags)]
-        
-    #     forecast_data = self.numerical_model(forecast_lags)
-        
-    #     plt.plot(lags, self.series_data, label = "Sample")
-        
-    #     plt.plot(future_lag, forecast_data, label = "Forecast")
-        
-    #     plt.legend()
-        
-    #     plt.xlabel("lags")
-        
-    #     plt.show()
         
             
 
 
 
 if __name__ == "__main__": 
-    data = MA_constructor(q=5)
-    plt.plot(range(len(data)), data)
-    plt.show()
-    #model1 = ([0.9,0.5,0.6], 4, 0.1)
+    
+    data = MA_constructor(100, q=6)
+    
     mamodel = MA_model(data) 
     
-    mamodel.fit(5)
-    # print(mamodel.theta)
-    # mamodel.model_function()
+    mamodel.fit(6)
+
     print(mamodel.model)
-    print(mamodel.error)
-    # mamodel1 =MA_model(data, [0.9,0.1])
-    # mamodel1.model_function()
-    # print(mamodel1.model)
-    # print(np.sum(mamodel.theta))
+    
+    mamodel.forecast(100)
+    
     
     
 
