@@ -11,8 +11,6 @@ Created on Thu March  12 13:07:24 2026
 
 
 import numpy as np
-from itertools import product
-from typing import Tuple
 import matplotlib.pyplot as plt
 #from src.acf.acf_cpp_backend import acf_cpp_backend_calc
 #from src.tools.confidence_interval import confidence_interval_plot
@@ -20,31 +18,41 @@ import matplotlib.pyplot as plt
 
 
 
-def MA_constructor(length: int = 100, theta: list = [0.2], stdev: float = 1, mean: float = 10.0) -> np.array:
+def MA_constructor(length: int = 100, *, q: int = 1, theta: list = None, stdev: float = 1, mean: float = 0.0) -> np.array:
     
-    error = [np.random.normal(0,stdev) for _ in theta]
-    
-    MAmodel = np.array([0.0]*length)
-    
-    for i in range(length):
-    
-        ma_construct = 0
+    if theta == None and q <=0 or length <= 0 or  stdev <=0:
+        print("Cannot build Moving Average model with the chosen inputs.")
+        print("Check that theta is a list with a least one element or that q is an integer greater than 0.")
+        print("Length of model data must be greater than 0 and standard deviation (stdev) must be greater than 0.")
         
-        for j in range(len(theta)):
-        
-            if i-j >=0:
+    else:
+        if theta == None:
             
-                ma_construct += theta[j] * error[j]
+            theta = [np.random.uniform(-1,1) for _ in range(q)]
+        print(theta)
+        error = [np.random.normal(0,stdev) for _ in theta]
         
-        MAmodel[i] = mean + np.random.normal(0,stdev) + ma_construct
+        MAmodel = np.array([0.0]*length)
         
-    return MAmodel
+        for i in range(length):
+        
+            ma_construct = 0
+            
+            for j in range(len(theta)):
+            
+                if i-j >=0:
+                
+                    ma_construct += theta[j] * error[j]
+            
+            MAmodel[i] = mean + np.random.normal(0,stdev) + ma_construct
+            
+        return MAmodel
 
 
 
 class MA_model():
     
-    def __init__(self, sample_data: [list, np.array], theta: [list, np.array] = None, mean: float = None, stdev: float = None):
+    def __init__(self, sample_data: [list, np.array] = None, theta: [list, np.array] = None, mean: float = None, stdev: float = None):
         
         self.sample_data = np.array(sample_data)
         
@@ -57,8 +65,10 @@ class MA_model():
         self.lags = None
         
         self.model = None
+        
+        self.error = None
    
-    
+    '''builds a model for printing'''
     def model_function(self, decimal_places: int = 4):
         
         if self.mean != None and self.theta.all() != None and self.stdev != None:
@@ -157,6 +167,9 @@ class MA_model():
                 
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.4f}")
+        
+        self.error = error[-q:]
+        self.model_function()
                 
         
             
@@ -198,15 +211,21 @@ class MA_model():
 
 
 if __name__ == "__main__": 
-    data = MA_constructor()
+    data = MA_constructor(q=5)
+    plt.plot(range(len(data)), data)
+    plt.show()
     #model1 = ([0.9,0.5,0.6], 4, 0.1)
     mamodel = MA_model(data) 
     
-    mamodel.fit(1)
-    print(mamodel.theta)
-    mamodel.model_function()
+    mamodel.fit(5)
+    # print(mamodel.theta)
+    # mamodel.model_function()
     print(mamodel.model)
-    print(np.sum(mamodel.theta))
+    print(mamodel.error)
+    # mamodel1 =MA_model(data, [0.9,0.1])
+    # mamodel1.model_function()
+    # print(mamodel1.model)
+    # print(np.sum(mamodel.theta))
     
     
 
