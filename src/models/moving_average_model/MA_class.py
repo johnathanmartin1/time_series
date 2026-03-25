@@ -145,11 +145,11 @@ class MA_model():
         
     
     '''fitting the theta weightings with gradient descent and assigning the last q errors for forecasting'''
-    def fit(self, q: int, *, lr = 0.0001, epochs = 2000, h=1e-6):
+    def fit(self, q: int, *, lr: float = 0.0001, epochs: int = 2000, h: float =1e-6):
         
-        self.theta = np.array([0.5] * q)
+        self.theta = np.array([0.0] * q)
         
-        for epoch in range(epochs):
+        for epoch in range(epochs+1):
             
             self.error = self.residuals(q)
             
