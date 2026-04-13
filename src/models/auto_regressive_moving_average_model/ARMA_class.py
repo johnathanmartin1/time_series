@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 
 
 
-class AR_model():
+class ARMA_model():
     
-    def __init__(self, sample_data: [list, np.array] = None, *, q: int = 1, phi: [list, np.array] = None, mean: float = None, stdev: float = None):
+    def __init__(self, sample_data: [list, np.array] = None, *, p: int = 1, phi: [list, np.array] = None,
+                 q: int =1, theta: list = None, mean: float = None, stdev: float = None):
         
         self.sample_data = np.array(sample_data)
         
@@ -23,6 +24,8 @@ class AR_model():
         self.stdev = np.std(self.sample_data) if stdev == None else stdev
         
         self.phi = np.array(phi)
+        
+        self.theta = np.array(theta)
         
         self.model = None
         
@@ -33,7 +36,7 @@ class AR_model():
 
 
         
-    def model_function(self, decimal_places: int = 4):
+    def model_function(self, decimal_places: int = 4) -> None:
         '''Builds a auto regressive model for printing out as a string'''
         if self.mean != None and self.phi.all() != None and self.stdev != None:
         
@@ -62,7 +65,7 @@ class AR_model():
 
 
 
-    def ar_residuals(self, q: int):
+    def residuals(self):
         '''Calculates the reersdiaul errors oft he trial data versus the sample data'''
         
         errors = np.array([0.0]*len(self.sample_data))
@@ -76,10 +79,39 @@ class AR_model():
                 if sample_index-(phi_index+1) >=0:
                     ar_error += self.phi[phi_index]*self.sample_data[sample_index-(phi_index+1)]
             
-            errors[sample_index] = self.sample_data[sample_index] - self.mean - ar_error
+            
+            
+            ma_error = 0
+            
+            for theta_index in range(1,len(self.theta)+1):
+                
+                if sample_index-theta_index >= 0:
+                
+                    ma_error += self.theta[theta_index - 1] * errors[sample_index - theta_index] 
+                        
+            errors[sample_index] = self.sample_data[sample_index] - self.mean - ar_error - ma_error
             
         return errors
     
+    
+    # def MA_residuals(self) -> np.array:
+    #     '''Calculates the residuals of the sample data and the approximate data'''
+        
+    #     errors = [0.0]*len(self.sample_data)
+        
+    #     for sample_index in range(len(self.sample_data)):
+        
+    #         ma_error = 0
+            
+    #         for theta_index in range(1,len(self.theta)+1):
+                
+    #             if sample_index-theta_index >= 0:
+                
+    #                 ma_error += self.theta[theta_index - 1] * errors[sample_index - theta_index] 
+                
+    #             errors[sample_index] = self.sample_data[sample_index] - self.mean - ma_error
+        
+    #     return np.array(errors)
     
 
     
@@ -94,9 +126,13 @@ class AR_model():
     def gradient(self,h):
         '''Calculates the gradient of the loss function'''
         
-        gradients = np.array([0.0]*len(self.phi))
+        gradients = np.array([0.0]*(len(self.phi)+len(self.theta)))
         
-        base_error = self.ar_residuals(len(self.phi))
+        base_error = self.residuals()
+        
+        
+        
+        #base_error = np.append(ar_error, ma_error)
         
         base_loss = self.loss_function(base_error)
         
@@ -104,11 +140,22 @@ class AR_model():
             
             self.phi[phi_index] += h
             
-            error = self.ar_residuals(len(self.phi))
+            error = self.residuals()
+            
             
             loss = self.loss_function(error)
             
             gradients[phi_index] = (loss - base_loss) / h
+            
+        for theta_index in range(len(self.theta)):
+            
+            self.theta[theta_index] += h
+            
+            error = self.residuals()
+            
+            loss = self.loss_function(error)
+            
+            gradients[theta_index+len(self.phi)] = (loss - base_loss) / h
         
         return gradients
 
@@ -129,29 +176,36 @@ class AR_model():
 
 
     
-    def fit(self, q: int, *, lr: float = 0.0001, epochs: int = 2001, h:float = 1e-6, decimal_places: int = 4):
+    def fit(self, p: int, q: int, *, lr: float = 0.0001, epochs: int = 2001, h:float = 1e-6, decimal_places: int = 4):
         '''Fits the AR function based upon th echosen number of lags
-                - q is the chosen number of lags
+                - p is the chosen number of lags for the auto regressive part of the ARMA model
+                - q is the chosen number of lags for the moving aberage part of the ARMA model
                 - lr is the learening rate (default = 0.0001)
                 - epochs is the number of iterations the function will perform to fiund teh miniumum loss function (default = 2000)
                 - h is the step size of the nuumerical gradient smaller is more refined (default = 1e-6)
                 - decimal_places is accuracy of the to determine the loss function to less decimal places are less accurate (default = 4)'''
                 
-        self.phi = np.array([0.0]*q)
+        self.phi = np.array([0.0]*p)
+        
+        self.theta = np.array([0.0]*q)
         
         loss_bucket=[]
         
         for epoch in range(epochs+1):
             
-            self.error = self.ar_residuals(q)
-            
+            self.error = self.residuals()
+                        
             loss = self.loss_function(self.error)
             
             gradients = self.gradient(h)
             
-            for phi_index in range(q):
+            for phi_index in range(p):
                 
-                self.phi[phi_index] -= lr* gradients[phi_index]
+                self.phi[phi_index] -= lr * gradients[phi_index]
+            
+            for theta_index in range(q):
+                
+                self.theta[theta_index] -= lr * gradients[theta_index + p]
             
             loss_bucket.append(loss.round(decimal_places))
             
@@ -165,7 +219,7 @@ class AR_model():
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
         
-        self.mopdel = self.model_function(decimal_places)
+        #self.model = self.model_function(decimal_places)
         
         
         
@@ -214,28 +268,31 @@ class AR_model():
 if __name__ == "__main__":
     
     from time_series import ARMA_constructor
-    
-    data = ARMA_constructor(1000, q=2, p=3)
+    p=1
+    q=1
+    data = ARMA_constructor(500, p=p, q=q)
     
     plt.plot(range(len(data)), data)
     plt.show()
     
-    # armodel = AR_model(data)
+    arma_model = ARMA_model(data)
 
-    # armodel.fit(2)
+    arma_model.fit(p,q)
+    print(arma_model.phi)
+    print(arma_model.theta)
     # armodel.model_function()
     
     # print(armodel.model)
     # armodel.forecast(30)
     
     
-    # from statsmodels.tsa.arima.model import ARIMA
+    from statsmodels.tsa.arima.model import ARIMA
     
-    # model = ARIMA(data, order=(2,0,0))
+    model = ARIMA(data, order=(p,0,q))
     
-    # model_fit = model.fit()
+    model_fit = model.fit()
     # forecast = model_fit.get_forecast(steps=30)
     # print(forecast)
     # plt.plot(range(len(data)), data)
     # plt.plot(range(len(data),len(forecast.predicted_mean)+len(data)), forecast.predicted_mean)
-    # print(model_fit.summary())
+    print(model_fit.summary())

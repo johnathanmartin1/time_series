@@ -60,7 +60,7 @@ class AR_model():
 
 
 
-    def ar_residuals(self, p: int):
+    def ar_residuals(self):
         '''Calculates the reersdiaul errors oft he trial data versus the sample data'''
         
         errors = np.array([0.0]*len(self.sample_data))
@@ -94,7 +94,7 @@ class AR_model():
         
         gradients = np.array([0.0]*len(self.phi))
         
-        base_error = self.ar_residuals(len(self.phi))
+        base_error = self.ar_residuals()
         
         base_loss = self.loss_function(base_error)
         
@@ -102,7 +102,7 @@ class AR_model():
             
             self.phi[phi_index] += h
             
-            error = self.ar_residuals(len(self.phi))
+            error = self.ar_residuals()
             
             loss = self.loss_function(error)
             
@@ -141,7 +141,7 @@ class AR_model():
         
         for epoch in range(epochs+1):
             
-            self.error = self.ar_residuals(p)
+            self.error = self.ar_residuals()
             
             loss = self.loss_function(self.error)
             
