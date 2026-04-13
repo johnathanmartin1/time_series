@@ -268,8 +268,8 @@ class ARMA_model():
 if __name__ == "__main__":
     
     from time_series import ARMA_constructor
-    p=1
-    q=1
+    p=3
+    q=3
     data = ARMA_constructor(500, p=p, q=q)
     
     plt.plot(range(len(data)), data)

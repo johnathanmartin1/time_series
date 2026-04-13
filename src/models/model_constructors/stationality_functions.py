@@ -41,7 +41,7 @@ def stationality_theta(theta):
         parameter = []
         
         for i in theta:
-            parameter.append(-i)
+            parameter.append(i)
         
         parameter.append(1)
         
