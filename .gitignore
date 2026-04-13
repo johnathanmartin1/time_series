@@ -8,3 +8,5 @@ src/pacf/C++_pacf_backend/build/
 src/acf/C++_acf_backend/build/
 src/models/moving_average_model/__pycache__/
 src/models/auto_regressive_model/__pycache__/
+src/models/model_constructors/__pycache__/
+src/models/auto_regressive_moving_average_model/__pycache__/

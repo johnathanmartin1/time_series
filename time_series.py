@@ -24,6 +24,15 @@ from src.pacf.pacf_function import pacf_py, pacf
 (path = src.models.moving_average_model.MA_class'''
 from src.models.moving_average_model.MA_class import MA_model
 
+'''Importing the various model constructors
+paths :
+    src.models.model_constructors.AR_model_constructor
+    src.models.model_constructors.MA_model_constructor
+    src.models.model_constructors.ARMA_model_constructor'''
+from src.models.model_constructors.AR_model_constructor import AR_constructor
+from src.models.model_constructors.MA_model_constructor import MA_constructor
+from src.models.model_constructors.ARMA_model_constructor import ARMA_constructor
+
 
         
     

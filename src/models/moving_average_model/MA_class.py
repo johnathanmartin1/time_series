@@ -14,39 +14,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
-
-
-def MA_constructor(length: int = 100, *, q: int = 1, theta: list = None, stdev: float = 1, mean: float = 0.0) -> np.array:
-    
-    if theta == None and q <=0 or length <= 0 or  stdev <=0:
-        print("Cannot build Moving Average model with the chosen inputs.")
-        print("Check that theta is a list with a least one element or that q is an integer greater than 0.")
-        print("Length of model data must be greater than 0 and standard deviation (stdev) must be greater than 0.")
-        
-    else:
-        if theta == None:
-            
-            theta = [np.random.uniform(-1,1) for _ in range(q)]
-        print(theta)
-        
-        MAmodel = np.array([0.0]*length)
-        
-        for i in range(length):
-            
-            ma_noise = 0
-            
-            for thet in theta:
-            
-                ma_noise += thet*np.random.normal(0,stdev)  
-            
-            MAmodel[i] = mean + ma_noise
-        
-        return MAmodel
-
-
-
 class MA_model():
+    '''Class that is utilised for fitting a moving average (MA) model'''
     
     def __init__(self, sample_data: [list, np.array] = None, theta: [list, np.array] = None, mean: float = None, stdev: float = None):
         
@@ -63,13 +32,14 @@ class MA_model():
         self.error = None
    
     
-   
-    '''builds a model for printing'''
+
+    
     def model_function(self, decimal_places: int = 4):
+        '''Builds a model that can be used for printing out a numerical result as a string'''
         
         if self.mean != None and self.theta.all() != None and self.stdev != None:
         
-            numerical_model_temp = f"{self.mean:.{decimal_places}f} + \u03B5_t"
+            numerical_model_temp = f"{self.mean:.{decimal_places}f}"
     
             for lag, coefficient in enumerate(self.theta):
             
@@ -85,7 +55,7 @@ class MA_model():
                 
                     numerical_model_temp += f" + {coefficient:.{decimal_places}f}\u03B5_(t-{lag})"
             
-            self.model = numerical_model_temp
+            self.model = numerical_model_temp + " + \u03B5_t"
             
         else:
         
@@ -93,8 +63,9 @@ class MA_model():
 
 
     
-    '''function that calculates the residuals between the sample data and the predicted data'''
+    
     def residuals(self, q: int) -> np.array:
+        '''Calculates the residuals of the sample data and the approximate data'''
         
         errors = [0.0]*len(self.sample_data)
         
@@ -112,16 +83,34 @@ class MA_model():
         
         return np.array(errors)
 
+
     
 
     def loss_function(self, errors: np.array) -> float:
+        '''Calculates the loss function based off the residuals'''
         
-        return np.sum(errors**2)
-     
-       
+        return np.sum(errors**2) 
+    
+    
+
+    
+    def early_loss_convergence(self, loss_bucket):
+        '''Determines if the past three loss values are the same and will return True, switching of the fitting function early'''
+        
+        if len(set(loss_bucket))==1 and len(loss_bucket)==3:
+        
+            return True
+        
+        else:
+        
+            return False  
   
+    
+  
+    
     def gradient(self, h:float) -> np.array:
-        
+        '''Determines the gradient of the error function'''
+      
         gradients = [0.0]*len(self.theta)
         
         base_error = self.residuals(len(self.theta))
@@ -142,12 +131,17 @@ class MA_model():
         
         
         
-        
-    
-    '''fitting the theta weightings with gradient descent and assigning the last q errors for forecasting'''
-    def fit(self, q: int, *, lr: float = 0.0001, epochs: int = 2000, h: float =1e-6):
-        
+    def fit(self, q: int, *, lr: float = 0.0001, epochs: int = 2000, h: float =1e-6, decimal_places: int = 4):
+        '''Fits the MA function based upon th echosen number of lags
+                - q is the chosen number of lags
+                - lr is the learening rate (default = 0.0001)
+                - epochs is the number of iterations the function will perform to fiund teh miniumum loss function (default = 2000)
+                - h is the step size of the nuumerical gradient smaller is more refined (default = 1e-6)
+                - decimal_places is accuracy of the to determine the loss function to less decimal places are less accurate (default = 4)'''
+                
         self.theta = np.array([0.0] * q)
+        
+        loss_bucket=[]
         
         for epoch in range(epochs+1):
             
@@ -159,28 +153,36 @@ class MA_model():
             
             for theta_index in range(q):
                 self.theta[theta_index] -= lr * gradients[theta_index]
+            
+            loss_bucket.append(loss.round(decimal_places))
+            
+            if len(loss_bucket) > 3:
+                loss_bucket.pop(0)
+            
+            if self.early_loss_convergence(loss_bucket) == True:
+                print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
+                break
                 
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.4f}")
         
         
-        self.model_function()
+        self.model_function(decimal_places)
+        
+            
+            
+            
+    def forecast(self, forecast_data_points=10):
+        '''Plots a forecast of the model aftere fitting
+                - forecast_data_points is the number of future data points that are required (default = 10)'''
                 
-        
-            
-            
-            
-            
-    '''Plotting a forecast of the model'''   
-    def forecast(self, steps=10):
-        
         lags  = [i for i in range(0, len(self.sample_data))]
         
-        future_steps = [ i for i in range(len(self.sample_data), len(self.sample_data) + steps)]
+        future_lags = [ i for i in range(len(self.sample_data), len(self.sample_data) + forecast_data_points)]
         
         forecast_data = []
         
-        for i in reversed(range(-1*steps+len(self.theta)+1,len(self.theta)+1)):
+        for i in reversed(range(-1*forecast_data_points+len(self.theta)+1,len(self.theta)+1)):
             
             if i<=0:
             
@@ -192,7 +194,7 @@ class MA_model():
         
         plt.plot(lags, self.sample_data, label="Sample Data", color="blue")
         
-        plt.plot(future_steps, forecast_data, label = "Forecast", color="green")
+        plt.plot(future_lags, forecast_data, label = "Forecast", color="green")
         
         plt.legend()
         
@@ -210,11 +212,13 @@ class MA_model():
 
 if __name__ == "__main__": 
     
+    from time_series import MA_constructor
+    
     data = MA_constructor(100, q=6)
     
     mamodel = MA_model(data) 
     
-    mamodel.fit(6)
+    mamodel.fit(2)
 
     print(mamodel.model)
     

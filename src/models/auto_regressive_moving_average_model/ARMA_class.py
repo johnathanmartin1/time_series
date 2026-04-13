@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 24 13:44:22 2026
+Created on Mon Apr 13 17:23:48 2026
 
 @author: John Martin
 """
-
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+                
 
 
 
 class AR_model():
     
-    def __init__(self, sample_data: [list, np.array] = None, *, p: int = 1, phi: [list, np.array] = None, mean: float = None, stdev: float = None):
+    def __init__(self, sample_data: [list, np.array] = None, *, q: int = 1, phi: [list, np.array] = None, mean: float = None, stdev: float = None):
         
         self.sample_data = np.array(sample_data)
         
@@ -55,12 +57,12 @@ class AR_model():
             
         else:
         
-            print("MA model not yet fitted, use .fit(p) to fit model first and then call .model_function().")
+            print("MA model not yet fitted, use .fit(q) to fit model first and then call .model_function().")
 
 
 
 
-    def ar_residuals(self, p: int):
+    def ar_residuals(self, q: int):
         '''Calculates the reersdiaul errors oft he trial data versus the sample data'''
         
         errors = np.array([0.0]*len(self.sample_data))
@@ -127,27 +129,27 @@ class AR_model():
 
 
     
-    def fit(self, p: int, *, lr: float = 0.0001, epochs: int = 2001, h:float = 1e-6, decimal_places: int = 4):
+    def fit(self, q: int, *, lr: float = 0.0001, epochs: int = 2001, h:float = 1e-6, decimal_places: int = 4):
         '''Fits the AR function based upon th echosen number of lags
-                - p is the chosen number of lags
+                - q is the chosen number of lags
                 - lr is the learening rate (default = 0.0001)
                 - epochs is the number of iterations the function will perform to fiund teh miniumum loss function (default = 2000)
                 - h is the step size of the nuumerical gradient smaller is more refined (default = 1e-6)
                 - decimal_places is accuracy of the to determine the loss function to less decimal places are less accurate (default = 4)'''
                 
-        self.phi = np.array([0.0]*p)
+        self.phi = np.array([0.0]*q)
         
         loss_bucket=[]
         
         for epoch in range(epochs+1):
             
-            self.error = self.ar_residuals(p)
+            self.error = self.ar_residuals(q)
             
             loss = self.loss_function(self.error)
             
             gradients = self.gradient(h)
             
-            for phi_index in range(p):
+            for phi_index in range(q):
                 
                 self.phi[phi_index] -= lr* gradients[phi_index]
             
@@ -211,29 +213,29 @@ class AR_model():
 
 if __name__ == "__main__":
     
-    from time_series import AR_constructor
+    from time_series import ARMA_constructor
     
-    data = AR_constructor(100, p=2)
+    data = ARMA_constructor(1000, q=2, p=3)
     
     plt.plot(range(len(data)), data)
     plt.show()
     
-    armodel = AR_model(data)
+    # armodel = AR_model(data)
 
-    armodel.fit(2)
-    armodel.model_function()
+    # armodel.fit(2)
+    # armodel.model_function()
     
-    print(armodel.model)
-    armodel.forecast(30)
+    # print(armodel.model)
+    # armodel.forecast(30)
     
     
-    from statsmodels.tsa.arima.model import ARIMA
+    # from statsmodels.tsa.arima.model import ARIMA
     
-    model = ARIMA(data, order=(2,0,0))
+    # model = ARIMA(data, order=(2,0,0))
     
-    model_fit = model.fit()
-    forecast = model_fit.get_forecast(steps=30)
-    print(forecast)
-    plt.plot(range(len(data)), data)
-    plt.plot(range(len(data),len(forecast.predicted_mean)+len(data)), forecast.predicted_mean)
-    print(model_fit.summary())
+    # model_fit = model.fit()
+    # forecast = model_fit.get_forecast(steps=30)
+    # print(forecast)
+    # plt.plot(range(len(data)), data)
+    # plt.plot(range(len(data),len(forecast.predicted_mean)+len(data)), forecast.predicted_mean)
+    # print(model_fit.summary())
