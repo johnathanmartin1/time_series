@@ -31,7 +31,7 @@ class AR_model():
 
 
         
-    def model_function(self, decimal_places: int = 4):
+    def model_function(self, decimal_places: int = 4) -> None:
         '''Builds a auto regressive model for printing out as a string'''
         if self.mean != None and self.phi.all() != None and self.stdev != None:
         
@@ -163,7 +163,7 @@ class AR_model():
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
         
-        self.mopdel = self.model_function(decimal_places)
+        self.model_function(decimal_places)
         
         
         

@@ -1,30 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 13 17:23:48 2026
+Created on Tue Apr 14 01:25:20 2026
 
 @author: John Martin
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-                
-
-
-
-class ARMA_model():
+class ARIMA_model():
     
     def __init__(self, sample_data: [list, np.array] = None):
         
         self.sample_data = np.array(sample_data)
         
-        self.mean = np.mean(self.sample_data) 
+        self.maximum_data = abs(np.max(self.sample_data))
         
-        self.stdev = np.std(self.sample_data)
+        self.sample_data_normalised = self.sample_data.copy()/self.maximum_data
+        
+        self.sample_data_diff = [0.0]*len(self.sample_data)
+        
+        self.mean = None #mean of sample_data_diff
+        
+        self.stdev = None #standard devaition of sample_data_diff
         
         self.phi = None
         
         self.theta = None
+        
+        self.integration = None
         
         self.model = None
         
@@ -32,6 +37,7 @@ class ARMA_model():
         
         self.forecast_data = None
 
+        self.diff_bucket = []
 
 
         
@@ -48,7 +54,7 @@ class ARMA_model():
                 
                 if coefficient < 0:
                 
-                    coefficient = abs(coefficient)
+                    coefficient = abs(coefficient)*self.maximum_data
                     
                     numerical_model_temp += f" - {coefficient:.{decimal_places}f}Y_(t-{lag})"
                 
@@ -62,7 +68,7 @@ class ARMA_model():
                 
                 if coefficient < 0:
                 
-                    coefficient = abs(coefficient)
+                    coefficient = abs(coefficient)*self.maximum_data
                     
                     numerical_model_temp += f" - {coefficient:.{decimal_places}f}\u03B5_(t-{lag})"
                 
@@ -82,18 +88,17 @@ class ARMA_model():
     def residuals(self):
         '''Calculates the reersdiaul errors oft he trial data versus the sample data'''
         
-        errors = np.array([0.0]*len(self.sample_data))
+        errors = np.array([0.0]*len(self.sample_data_diff))
         
-        for sample_index in range(len(self.sample_data)):
+        for sample_index in range(len(self.sample_data_diff)):
             
             ar_error = 0
             
             for phi_index in range(len(self.phi)):
                 
                 if sample_index-(phi_index+1) >=0:
-                    ar_error += self.phi[phi_index]*self.sample_data[sample_index-(phi_index+1)]
-            
-            
+                    
+                    ar_error += self.phi[phi_index]*self.sample_data_diff[sample_index-(phi_index+1)]
             
             ma_error = 0
             
@@ -103,7 +108,7 @@ class ARMA_model():
                 
                     ma_error += self.theta[theta_index - 1] * errors[sample_index - theta_index] 
                         
-            errors[sample_index] = self.sample_data[sample_index] - self.mean - ar_error - ma_error
+            errors[sample_index] = self.sample_data_diff[sample_index] - self.mean - ar_error - ma_error
             
         return errors
     
@@ -162,11 +167,38 @@ class ARMA_model():
         else:
         
             return False
-        
-
-
     
-    def fit(self, p: int, q: int, *, lr: float = 0.0001, epochs: int = 2001, h:float = 1e-6, decimal_places: int = 4):
+        
+    
+    def diff(self, i) -> None:
+        if self.integration !=0:
+            
+            sample_data_diff = self.sample_data_normalised.copy()
+            
+            for _ in range(i):
+                
+                for index, value in enumerate(range(1,len(sample_data_diff))):
+                    
+                    sample_data_diff[-index] = sample_data_diff[-index]-sample_data_diff[-index-1]
+                
+                sample_data_diff[0] = 0
+                
+                self.diff_bucket.append(sample_data_diff)
+                
+            self.sample_data_diff = sample_data_diff[:]
+             
+        else:
+        
+            self.sample_data_diff = self.sample_data_normalised.copy()
+        
+        self.mean = np.mean(self.sample_data_diff)
+        
+        self.stdev = np.std(self.sample_data_diff)
+        
+    
+    
+    
+    def fit(self, p: int, i:int, q: int, *, lr: float = 0.0001, epochs: int = 10000001, h:float = 1e-6, decimal_places: int = 4) -> None:
         '''Fits the AR function based upon th echosen number of lags
                 - p is the chosen number of lags for the auto regressive part of the ARMA model
                 - q is the chosen number of lags for the moving aberage part of the ARMA model
@@ -174,10 +206,15 @@ class ARMA_model():
                 - epochs is the number of iterations the function will perform to fiund teh miniumum loss function (default = 2000)
                 - h is the step size of the nuumerical gradient smaller is more refined (default = 1e-6)
                 - decimal_places is accuracy of the to determine the loss function to less decimal places are less accurate (default = 4)'''
-                
+        
+        self.integration = i 
+        
+        self.diff(self.integration)
+        
         self.phi = np.array([0.0]*p)
         
         self.theta = np.array([0.0]*q)
+        
         
         loss_bucket=[]
         
@@ -213,48 +250,101 @@ class ARMA_model():
         
         
         
+       
+    def rediff(self, i):
+        
+        initial_data=self.forecast_data.copy()
+        
+        for diff in range(len(self.diff_bucket)):
+            
+            data_diff = self.diff_bucket[-diff-1].copy()
+            
+            for index, value in enumerate(initial_data):
                 
+                if index != 0 and index <= len(self.sample_data_normalised):
+                    
+                    initial_data[index] +=  initial_data[index-1] + data_diff[index-1]
+                    
+                elif index != 0 and index > len(self.sample_data_normalised):
+                    
+                    if diff == len(self.diff_bucket)-1:
+                        
+                        grad = self.sample_data_normalised[-1]-self.sample_data_normalised[-2]
+              
+                        momentum = grad/(index-len(self.sample_data_normalised))
+                    
+                        initial_data[index] +=  initial_data[index-1] + momentum  
+                    
+                    else:
+                       
+                        initial_data[index] +=  initial_data[index-1] 
+        
+        self.forecast_data = np.array(initial_data.copy())*self.maximum_data  
+     
+
+
+    
     def forecast(self, forecast_data_points: int = 10, *, y_axis: str = "Value"):
         '''Plots a forecast of the model aftere fitting
                 - forecast_data_points is the number of future data points that are required (default = 10)
                 - yaxis can be changed depending on what the data set represents'''
                 
-        lags  = [i for i in range(0, len(self.sample_data))]
+        lags = range(len(self.sample_data_normalised)+forecast_data_points)
         
-        future_lags = [ i for i in range(len(self.sample_data), len(self.sample_data) + forecast_data_points)]
+        forecast_data = [0.0]*(len(lags))
         
-        self.forecast_data = [i for i in self.sample_data[-len(self.phi):]]
+        forecast_data[0]=self.mean
         
-        for loop in range(forecast_data_points):
-            
-            forecast = 0
-            
-            for index, value in enumerate(self.phi):
+        for index in range(1,len(forecast_data)):
+            ar_forecast=0
+
+            for phi_index in range(1,len(self.phi)+1):
                 
-                forecast += value*self.forecast_data[-index-1]
+                if index <= len(forecast_data)-forecast_data_points:
+                
+                    ar_forecast += self.phi[phi_index-1]*self.sample_data_diff[index-phi_index-1] 
+                else:
+                    if index < phi_index:
+                    
+                        pass
+                    
+                    else:
+                    
+                        ar_forecast+=self.phi[phi_index-1]*forecast_data[index-phi_index]
+            forecast_data[index]+= ar_forecast
             
-            self.forecast_data.append(forecast)
+                
+            ma_forecast=0
         
-        for _ in range(len(self.phi)):
+            if index >= len(forecast_data)-forecast_data_points-1:
             
-            self.forecast_data.pop(0)
-        
-        forecast_data_temp = []
-        for i in reversed(range(-1*forecast_data_points+len(self.theta)+1,len(self.theta)+1)):
+                ma_forecast += self.mean
             
-            if i<=0:
-            
-                forecast_data_temp.append(self.mean)
-        
             else:
+            
+                for theta_index in range(1, len(self.theta)+1):
+                
+                    if index < theta_index:
+                    
+                        pass
+                    
+                    else:
+                        
+                        ma_forecast += self.theta[theta_index-1]*self.error[index-theta_index] 
+            
+            forecast_data[index] += ma_forecast
         
-                forecast_data_temp.append(self.mean + np.sum(self.theta[-i:] * self.error[-i:]))
+        forecast_data.pop(0)
         
-        self.forecast_data = [val + self.forecast_data[index] for index, val in enumerate(forecast_data_temp)]
+        self.forecast_data = forecast_data.copy()
         
-        plt.plot(lags, self.sample_data, label="Sample Data", color="blue")
+        #print(self.forecast_data)
+        self.rediff(self.integration)
         
-        plt.plot(future_lags, self.forecast_data, label = "Forecast", color="green")
+        
+        plt.plot(lags[:len(self.sample_data)], self.sample_data, label="Sample Data", color="blue")
+        
+        plt.plot(lags[:-1], self.forecast_data, label = "Forecast", color="green")
         
         plt.legend()
         
@@ -262,7 +352,9 @@ class ARMA_model():
         
         plt.ylabel(f"{y_axis}", rotation=90)
         
-        plt.show()
+        plt.show()  
+        
+       
 
 
 
@@ -270,30 +362,36 @@ class ARMA_model():
 
 if __name__ == "__main__":
     
-    from time_series import ARMA_constructor
-    p=2
-    q=0
-    data = ARMA_constructor(100, p=p, q=q)
+    from time_series import ARIMA_constructor
+    p=1
+    q=1
+    i=1
+    data = ARIMA_constructor(100, p=p, i=i, q=q)
     
     plt.plot(range(len(data)), data)
     plt.show()
     
-    arma_model = ARMA_model(data)
-
-    arma_model.fit(p,q)
+    arima_model = ARIMA_model(data)
     
+    
+    arima_model.fit(p,i,q, decimal_places=5)
+    
+    plt.plot(range(len(arima_model.sample_data_diff)), arima_model.sample_data_diff)
+    plt.show()
 
-    print(arma_model.model)
-    arma_model.forecast(30)
+    print(arima_model.model)
+    arima_model.forecast(30)
+   
     
     
     from statsmodels.tsa.arima.model import ARIMA
     
-    model = ARIMA(data, order=(p,0,q))
+    model = ARIMA(data, order=(p,i,q))
     
     model_fit = model.fit()
-    forecast = model_fit.get_forecast(steps=30)
-    print(forecast)
+    forecast = model_fit.predict(start=0, end=len(data)+30)
+    
     plt.plot(range(len(data)), data)
-    plt.plot(range(len(data),len(forecast.predicted_mean)+len(data)), forecast.predicted_mean)
+    
+    plt.plot(forecast)
     print(model_fit.summary())

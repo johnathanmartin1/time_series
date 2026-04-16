@@ -34,7 +34,7 @@ class MA_model():
     
 
     
-    def model_function(self, decimal_places: int = 4):
+    def model_function(self, decimal_places: int = 4) -> None:
         '''Builds a model that can be used for printing out a numerical result as a string'''
         
         if self.mean != None and self.theta.all() != None and self.stdev != None:
