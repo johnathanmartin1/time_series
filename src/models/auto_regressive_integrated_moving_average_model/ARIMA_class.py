@@ -17,7 +17,7 @@ class ARIMA_model():
         
         self.maximum_data = abs(np.max(self.sample_data))
         
-        self.sample_data_normalised = self.sample_data.copy()/self.maximum_data
+        self.sample_data_normalised = self.sample_data.copy()
         
         self.sample_data_diff = [0.0]*len(self.sample_data)
         
@@ -29,7 +29,7 @@ class ARIMA_model():
         
         self.theta = None
         
-        self.integration = None
+        self.integration = 0
         
         self.model = None
         
@@ -54,7 +54,7 @@ class ARIMA_model():
                 
                 if coefficient < 0:
                 
-                    coefficient = abs(coefficient)*self.maximum_data
+                    coefficient = abs(coefficient)#*self.maximum_data
                     
                     numerical_model_temp += f" - {coefficient:.{decimal_places}f}Y_(t-{lag})"
                 
@@ -68,7 +68,7 @@ class ARIMA_model():
                 
                 if coefficient < 0:
                 
-                    coefficient = abs(coefficient)*self.maximum_data
+                    coefficient = abs(coefficient)#*self.maximum_data
                     
                     numerical_model_temp += f" - {coefficient:.{decimal_places}f}\u03B5_(t-{lag})"
                 
@@ -181,14 +181,15 @@ class ARIMA_model():
                     
                     sample_data_diff[-index] = sample_data_diff[-index]-sample_data_diff[-index-1]
                 
-                sample_data_diff[0] = 0
+                #sample_data_diff[0] = np.mean(sample_data_diff)
                 
                 self.diff_bucket.append(sample_data_diff)
                 
             self.sample_data_diff = sample_data_diff[:]
              
         else:
-        
+            #self.sample_data_diff = [0.0]*len(self.sample_data_normalised)
+            
             self.sample_data_diff = self.sample_data_normalised.copy()
         
         self.mean = np.mean(self.sample_data_diff)
@@ -198,7 +199,7 @@ class ARIMA_model():
     
     
     
-    def fit(self, p: int, i:int, q: int, *, lr: float = 0.0001, epochs: int = 10000001, h:float = 1e-6, decimal_places: int = 4) -> None:
+    def fit(self, p: int, i:int, q: int, *, lr: float = 0.0001, epochs: int = 10000001, h:float = 1e-8, decimal_places: int = 4) -> None:
         '''Fits the AR function based upon th echosen number of lags
                 - p is the chosen number of lags for the auto regressive part of the ARMA model
                 - q is the chosen number of lags for the moving aberage part of the ARMA model
@@ -206,6 +207,12 @@ class ARIMA_model():
                 - epochs is the number of iterations the function will perform to fiund teh miniumum loss function (default = 2000)
                 - h is the step size of the nuumerical gradient smaller is more refined (default = 1e-6)
                 - decimal_places is accuracy of the to determine the loss function to less decimal places are less accurate (default = 4)'''
+        
+        if p < 1 and q < 1:
+            
+            print("Integer values for p or q greater than zero have not been chosen, model fitting aborted")
+            
+            return
         
         self.integration = i 
         
@@ -224,6 +231,12 @@ class ARIMA_model():
                         
             loss = self.loss_function(self.error)
             
+            if loss == np.nan:
+                
+                print("loss function error, fitting stopped")
+            
+                break
+            
             gradients = self.gradient(h)
             
             for phi_index in range(p):
@@ -234,14 +247,15 @@ class ARIMA_model():
                 
                 self.theta[theta_index] -= lr * gradients[theta_index + p]
             
-            loss_bucket.append(loss.round(decimal_places))
+            if epoch >3000:
+                loss_bucket.append(loss.round(decimal_places))
             
-            if len(loss_bucket) > 3:
-                loss_bucket.pop(0)
-            
-            if self.early_loss_convergence(loss_bucket) == True:
-                print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
-                break
+                if len(loss_bucket) > 3:
+                    loss_bucket.pop(0)
+                
+                if self.early_loss_convergence(loss_bucket) == True:
+                    print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
+                    break
             
             if epoch % 50 == 0:
                 print(f"Epoch: {epoch}, loss: {loss:.{decimal_places}f}")
@@ -249,102 +263,158 @@ class ARIMA_model():
         self.model_function(decimal_places)
         
         
-        
-       
     def rediff(self, i):
-        
         initial_data=self.forecast_data.copy()
+        #if self.integration!=0:
+            #initial_data=self.forecast_data.copy()
+            
         
-        for diff in range(len(self.diff_bucket)):
-            
-            data_diff = self.diff_bucket[-diff-1].copy()
-            
+        if self.integration >0:
             for index, value in enumerate(initial_data):
                 
                 if index != 0 and index <= len(self.sample_data_normalised):
                     
-                    initial_data[index] +=  initial_data[index-1] + data_diff[index-1]
+                    initial_data[index] +=  self.sample_data[index-1]#+initial_data[index-1] #+ data_diff[index-1]
+                
+            #elif index != 0 and index > len(self.sample_data_normalised):
+                
+                # if diff == len(self.diff_bucket)-1:
                     
-                elif index != 0 and index > len(self.sample_data_normalised):
+                #     grad = initial_data[-1]-initial_data[-2]
+          
+                #     momentum = grad/(len(initial_data)-len(self.sample_data_normalised))**2
                     
-                    if diff == len(self.diff_bucket)-1:
-                        
-                        grad = self.sample_data_normalised[-1]-self.sample_data_normalised[-2]
-              
-                        momentum = grad/(index-len(self.sample_data_normalised))
+                        #initial_data[index] =  initial_data[index-1]   
                     
-                        initial_data[index] +=  initial_data[index-1] + momentum  
-                    
-                    else:
-                       
-                        initial_data[index] +=  initial_data[index-1] 
+                      
         
-        self.forecast_data = np.array(initial_data.copy())*self.maximum_data  
+        
+        self.forecast_data = np.array(initial_data.copy())
+               
+       
+    # def rediff(self, i):
+    #     initial_data=self.forecast_data.copy()
+    #     #if self.integration!=0:
+    #         #initial_data=self.forecast_data.copy()
+            
+    #     for diff in range(len(self.diff_bucket)):
+            
+    #         data_diff = self.diff_bucket[-diff-1].copy()
+            
+    #         for index, value in enumerate(initial_data):
+                
+    #             if index != 0 and index <= len(self.sample_data_normalised):
+                    
+    #                 initial_data[index] +=  self.sample_data[index-1]#+initial_data[index-1] #+ data_diff[index-1]
+                    
+    #             elif index != 0 and index > len(self.sample_data_normalised):
+                    
+    #                 if diff == len(self.diff_bucket)-1:
+                        
+    #                     grad = initial_data[-1]-initial_data[-2]
+              
+    #                     momentum = grad/(len(initial_data)-len(self.sample_data_normalised))**2
+                    
+    #                     #initial_data[index] =  initial_data[index-1]   
+                    
+                      
+        
+        
+    #     self.forecast_data = np.array(initial_data.copy())
+        
+    def ar_forecast(self, index: int, history: list)-> float:
+        '''returns the calculated ar value at the given index'''
+        
+        ar_forecast = np.mean(self.sample_data)
+
+        for phi_index in range(len(self.phi)):
+           
+            ar_forecast += self.phi[phi_index]*history[phi_index]
+           
+        return ar_forecast
      
-
-
+        
+    
+    
+    def ma_forecast(self, index: int) -> float:
+        '''returns the calculated ma value at the given index'''
+        
+        if len(self.phi)>0:
+            
+            ma_forecast = 0
+        
+        else:
+        
+            ma_forecast=self.mean
+    
+        if index >= len(self.sample_data):
+        
+            pass 
+            
+        else:
+        
+            for theta_index in range(0, len(self.theta)):
+            
+                ma_forecast += self.theta[theta_index]*self.error[index-theta_index] 
+        
+        return ma_forecast
+    
+    
+    
     
     def forecast(self, forecast_data_points: int = 10, *, y_axis: str = "Value"):
         '''Plots a forecast of the model aftere fitting
                 - forecast_data_points is the number of future data points that are required (default = 10)
                 - yaxis can be changed depending on what the data set represents'''
-                
+        
+        if self.model == None:
+        
+            print("Arima model needs fitting to sample data before forecasting.")
+            print("Please utilise the .fit method from the arima class.")
+            return
+        
         lags = range(len(self.sample_data_normalised)+forecast_data_points)
         
-        forecast_data = [0.0]*(len(lags))
-        
-        forecast_data[0]=self.mean
-        
-        for index in range(1,len(forecast_data)):
-            ar_forecast=0
-
-            for phi_index in range(1,len(self.phi)+1):
+        if len(self.phi)>0:
+            
+            forecast_data=list(self.sample_data_diff[:len(self.phi)])
+            
+            history=list(self.sample_data_diff[:len(self.phi)])
+            
+            for index in range(len(self.phi),len(self.sample_data)+forecast_data_points):
                 
-                if index <= len(forecast_data)-forecast_data_points:
+                forecast_data.append(self.ar_forecast(index, history[-len(self.phi):]))
                 
-                    ar_forecast += self.phi[phi_index-1]*self.sample_data_diff[index-phi_index-1] 
+                if index < len(self.sample_data_diff):
+                    
+                    history.append(self.sample_data_diff[index])
+                
                 else:
-                    if index < phi_index:
                     
-                        pass
-                    
-                    else:
-                    
-                        ar_forecast+=self.phi[phi_index-1]*forecast_data[index-phi_index]
-            forecast_data[index]+= ar_forecast
-            
-                
-            ma_forecast=0
-        
-            if index >= len(forecast_data)-forecast_data_points-1:
-            
-                ma_forecast += self.mean
-            
-            else:
-            
-                for theta_index in range(1, len(self.theta)+1):
-                
-                    if index < theta_index:
-                    
-                        pass
-                    
-                    else:
+                    for i in forecast_data[-len(self.phi):]:
                         
-                        ma_forecast += self.theta[theta_index-1]*self.error[index-theta_index] 
+                        history.append(i)
             
-            forecast_data[index] += ma_forecast
+            forecast_data[0]=self.mean
+                
+        else:
+            
+            forecast_data=[0.0]*(len(self.sample_data)+forecast_data_points)
         
-        forecast_data.pop(0)
+            forecast_data[0]=self.mean
+        
+        if len(self.theta) > 0:
+            
+            for index in range(1,len(self.sample_data)+forecast_data_points):                    
+            
+                forecast_data[index] += (self.ma_forecast(index))
         
         self.forecast_data = forecast_data.copy()
         
-        #print(self.forecast_data)
-        self.rediff(self.integration)
-        
-        
+        '''plotting the results against the sample data'''
         plt.plot(lags[:len(self.sample_data)], self.sample_data, label="Sample Data", color="blue")
         
-        plt.plot(lags[:-1], self.forecast_data, label = "Forecast", color="green")
+        plt.plot(lags[:], self.forecast_data[:], label = "Forecast", color="green")
         
         plt.legend()
         
@@ -365,8 +435,8 @@ if __name__ == "__main__":
     from time_series import ARIMA_constructor
     p=1
     q=1
-    i=1
-    data = ARIMA_constructor(100, p=p, i=i, q=q)
+    i=0
+    data = ARIMA_constructor(100, p=p, i=i, q=q, p_seed=None, q_seed=None)
     
     plt.plot(range(len(data)), data)
     plt.show()
@@ -374,12 +444,13 @@ if __name__ == "__main__":
     arima_model = ARIMA_model(data)
     
     
-    arima_model.fit(p,i,q, decimal_places=5)
+    arima_model.fit(p,i,q, decimal_places=4)
     
-    plt.plot(range(len(arima_model.sample_data_diff)), arima_model.sample_data_diff)
-    plt.show()
+    # plt.plot(range(len(arima_model.sample_data_diff)), arima_model.sample_data_diff)
+    # plt.show()
 
     print(arima_model.model)
+    
     arima_model.forecast(30)
    
     
@@ -394,4 +465,8 @@ if __name__ == "__main__":
     plt.plot(range(len(data)), data)
     
     plt.plot(forecast)
+    plt.xlabel("Lag")
+    
+    plt.ylabel(f"y_axis", rotation=90)
+    plt.show()
     print(model_fit.summary())

@@ -9,15 +9,11 @@ from src.models.model_constructors.stationality_functions import stationality_ph
 import numpy as np
 
 def input_check_arma(length, q, phi, p,  theta, stdev):
-    if phi == None and q <=0:
+    if phi == None and q <=0 and p <= 0 and theta == None:
         
         print("Cannot build Auto Regressive Moving Average model with the chosen inputs.")
         
         print("Check that phi is a list with a least one element or that q is an integer greater than 0.")
-        
-    if p <= 0 and theta == None:
-        
-        print("Cannot build Auto Regressive Moving Average model with the chosen inputs.")
         
         print("Check that theta is a list with at least one float or that p is an integer greater than 0")
     
@@ -34,7 +30,7 @@ def input_check_arma(length, q, phi, p,  theta, stdev):
         
         
 def ARIMA_constructor(length:int = 100, *, p: int = 1, phi: list = None, i:int = 1,  q: int = 1,
-                      theta: list = None, mean: float = 0, stdev: float = 1):
+                      theta: list = None, mean: float = 0, stdev: float = 1, p_seed: int = None, q_seed: int = None):
     '''Constructs a auto regressive moving average (ARMA) time series. 
             - length sets the number of data points in the time series (default = 100)
             - p sets the number of past lags to use when building the AR part of the model and will give random phi values (default = 1)
@@ -49,8 +45,13 @@ def ARIMA_constructor(length:int = 100, *, p: int = 1, phi: list = None, i:int =
     if input_check_arma(length, p, phi, q, theta, stdev) == True:
         
         if phi == None:
+            if p_seed!=None:
+                
+                np.random.seed(p_seed)
             
-            phi = [np.random.uniform(0,1) for _ in range(p)]
+            phi = np.random.uniform(-1,1,size=p)
+        
+                      
         
         else:
             
@@ -59,8 +60,13 @@ def ARIMA_constructor(length:int = 100, *, p: int = 1, phi: list = None, i:int =
                 return
         
         if theta == None:
+            if q_seed!= None:
+                
+                np.random.seed(q_seed)
             
-            theta = [np.random.uniform(0,1) for _ in range(q)]
+            theta = np.random.uniform(0,1, size=q)
+            
+           
         
         else:
             
@@ -114,7 +120,7 @@ def ARIMA_constructor(length:int = 100, *, p: int = 1, phi: list = None, i:int =
                     pass
                 else:
                     arimamodel[index] += arimamodel[index - 1]
-        
+            
                   
       
             
